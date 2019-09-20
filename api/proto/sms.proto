@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+// SMS Service
+//
+// SMS Service API consists of 2 services to send a single and multiple SMSs
+// This service is Idempotent: 
+//  It is safe to retry sending the same SMS and will be processed only once.
+//  The client has to attach idempotency key with every single sms.
+package sms;
+
+import "google/api/annotations.proto";
+import "github.com/mwitkow/go-proto-validators/validator.proto";
+
+message SMS {
+  string idempotency_key = 1 [(validator.field) = {string_not_empty : true}];
+  string from_phone_number = 2 [(validator.field) = {string_not_empty : true}]; // also shouldn't be same as "to_phone_number"?
+  string to_phone_number = 3 [(validator.field) = {string_not_empty : true}];
+  string content = 4 [(validator.field) = {string_not_empty : true}];
+}
+
+message SendOneRequest {
+  SMS sms = 1;
+}
+
+message SendOneResponse {
+  bool sent = 1;
+  string message = 2;
+}
+
+message SendManyRequest {
+  SMS sms =1;
+}
+
+message SendManyResponse {
+  // An array of errors occured (if any) for each sms
+  repeated string errors = 1;
+}
+
+service SMSService {
+  // SendOne method sends a single sms
+  rpc SendOne (SendOneRequest) returns (SendOneResponse) {
+    option (google.api.http) = {
+      post: "/sms/send/one",
+      body: "*"
+		};
+  }
+
+  // SendMany method sends many SMSs in one request.
+  // It relies on calling SendOne method for each sms.
+  // 
+  // For HTTP API, newline-delimited JSON is used for streaming.
+  rpc SendMany (stream SendManyRequest) returns (SendManyResponse) {
+    option (google.api.http) = {
+      post: "/sms/send/many",
+      body: "*"
+		};
+  }
+}

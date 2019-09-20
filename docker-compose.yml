@@ -1,0 +1,62 @@
+version: '3'
+services:
+  phonebook:
+    build: 
+      dockerfile: ./build/phonebook/Dockerfile.dev
+      context: ./
+    volumes:
+      - ./:/app
+    environment:  
+      - MYSQL_USERNAME=${MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_DBNAME=${MYSQL_DBNAME}
+      - GRPC_SERVER_PORT=${GRPC_SERVER_PORT}
+      - TRACING_SERVER_HOST=${TRACING_SERVER_HOST}
+  sms:
+      build:
+        dockerfile: ./build/sms/Dockerfile.dev
+        context: ./
+      volumes:
+        - ./:/app
+      environment:
+        - MONGODB_URI=${MONGODB_URI}
+        - MONGODB_DBNAME=${MONGODB_DBNAME}
+        - GRPC_SERVER_PORT=${GRPC_SERVER_PORT}
+        - TRACING_SERVER_HOST=${TRACING_SERVER_HOST}
+      depends_on:
+        - phonebook
+  gateway:
+      build: 
+        dockerfile: ./build/gateway/Dockerfile.dev
+        context: ./
+      volumes:
+        - ./:/app
+      environment:
+        - GRPC_SERVER_PORT=${GRPC_SERVER_PORT}
+      depends_on:
+        - phonebook
+        - sms
+      ports:  
+        - '8080:8080'
+  tests:
+    build:
+      dockerfile: ./build/tests/Dockerfile
+      context: ./
+    volumes:
+      - ./:/app
+    environment:
+      - MYSQL_USERNAME=${MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_DBNAME=${MYSQL_DBNAME}
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DBNAME=${MONGODB_DBNAME}
+      - GRPC_SERVER_PORT=${GRPC_SERVER_PORT}
+    depends_on:
+      - phonebook
+      - sms
+      - gateway
+

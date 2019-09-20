@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+// PhoneBook Service
+//
+// PhoneBook Service API consists of 3 services to find, reserve, 
+// and assign a phone number.
+package phonebook; 
+
+import "google/api/annotations.proto";
+import "github.com/mwitkow/go-proto-validators/validator.proto";
+
+// ---- Find
+message FindOneRequest {
+  // Further validation can include regex.
+  string phone_number = 1 [(validator.field) = {string_not_empty : true}];
+}
+
+message FindOneResponse {
+  bool exists = 1;
+}
+
+// ---- Reserve
+message ReserveRequest {
+  int32 area_code = 1; // must be 3 digits?
+}
+
+message ReserveResponse {
+  repeated string phone_numbers = 1;   // 5 phone numbers 
+  string ref_id = 2;
+}
+
+
+// ---- Assign
+message AssignRequest {
+  int32  user_id = 1 [(validator.field) = {string_not_empty : true}];
+  string phone_number = 2 [(validator.field) = {string_not_empty : true}];
+  string ref_id = 3 [(validator.field) = {string_not_empty : true}];
+}
+
+message AssignResponse {
+  bool assigned = 1;
+}
+
+service PhoneBookService {
+  // FindOne method finds if the given phone number exists or not
+  rpc FindOne(FindOneRequest) returns (FindOneResponse) {
+    option (google.api.http) = {
+			get: "/phonebook/find/{phone_number}"
+		};
+  };
+
+  // Reserve method reservers 5 (unassigned) phone numbers 
+  //  and allow the user to choose one of them.
+  //
+  // The refID (random hash) is used identify the reserved numbers 
+  //  when Assign method is called later.
+  rpc Reserve(ReserveRequest) returns (ReserveResponse) {
+    option (google.api.http) = {
+      post: "/phonebook/reserve",
+      body: "*" 
+		};
+  }; 
+
+  // Assign method assigns the choosen number to the user.
+  //
+  // It is called immediately after Reserve method to carry on the phone number assignment.
+  rpc Assign(AssignRequest) returns (AssignResponse) {
+    option (google.api.http) = {
+      post: "/phonebook/assign",
+      body: "*"
+		};
+  };
+}

@@ -1,0 +1,16 @@
+sudo: required
+
+services:
+  - docker
+
+before_script:
+  # build before running tests ignoring tests service
+  - docker-compose up --no-start --scale tests=0
+
+script:
+  # start services and run all tests
+  - docker-compose start
+  - docker-compose up tests
+
+after_script:
+  - docker-compose down
