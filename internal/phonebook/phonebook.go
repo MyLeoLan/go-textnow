@@ -4,6 +4,7 @@ import (
 	context "context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/OmarElGabry/go-callme/internal/pkg/logger"
@@ -162,18 +163,45 @@ func (s *server) Assign(ctx context.Context, req *AssignRequest) (*AssignRespons
 		}
 	}()
 
+	// The below SQL statements can run concurrently; they don't need to be in sequence
+	var wg sync.WaitGroup
+	errChan := make(chan error)
+	wg.Add(2)
+
 	// 3) Delete the choosen phone number.
 	// 	Now, there is supposed to be only one phone number with the refID
-	_, err = tx.Exec("DELETE FROM un_assigned_numbers WHERE ref_id=?", refID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Failed to assign the phone number: %v", err))
-	}
+	go func() {
+		_, err = tx.Exec("DELETE FROM un_assigned_numbers WHERE ref_id=?", refID)
+		errChan <- err
+		wg.Done()
+	}()
 
 	// 4) Assign it to the user
 	// 	Again, we assume that the userID already exists.
-	_, err = tx.Exec("UPDATE phonebook SET phone_number=? WHERE user_id=?", phoneNumber, userID)
+	go func() {
+		_, err = tx.Exec("UPDATE phonebook SET phone_number=? WHERE user_id=?", phoneNumber, userID)
+		errChan <- err
+		wg.Done()
+	}()
+
+	// collect the errors if any
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	for ec := range errChan {
+		if ec != nil && err == nil { // take the first error
+			// we can return or break the loop!
+			// this loop needs to finish so that there won't be any leaky gorountines
+			// in other words, all goroutines must finish and channel must be closed before returning
+			err = ec
+		}
+	}
+
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Failed to assign the phone number: %v", err))
+		return nil, status.Errorf(codes.Internal,
+			fmt.Sprintf("Failed to assign the phone number: %v", err))
 	}
 
 	err = tx.Commit()

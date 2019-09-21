@@ -4,6 +4,7 @@ import (
 	context "context"
 	fmt "fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/OmarElGabry/go-callme/internal/phonebook"
@@ -59,12 +60,33 @@ func (s *server) SendOne(ctx context.Context, req *SendOneRequest) (*SendOneResp
 	}()
 
 	// 2) Check if phone numbers actually exist in the database
-	err = s.findPhoneNumber(ctx, fromPhoneNumber)
-	if err != nil {
-		return nil, err
+	// We can send two requests in parallel and validate the result when both are done
+	var wg sync.WaitGroup
+	errChan := make(chan error)
+	wg.Add(2)
+
+	for _, pNumber := range []string{fromPhoneNumber, toPhoneNumber} {
+		go func(pNumber string) {
+			err = s.findPhoneNumber(ctx, pNumber)
+			errChan <- err
+			wg.Done()
+		}(pNumber)
 	}
 
-	err = s.findPhoneNumber(ctx, toPhoneNumber)
+	// collect the errors if any
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	for ec := range errChan {
+		if ec != nil && err == nil {
+			// again, we can't terminate the loop here
+			// see phonebook@FindOne
+			err = ec
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +109,12 @@ func (s *server) SendOne(ctx context.Context, req *SendOneRequest) (*SendOneResp
 // SendMany method sends many SMSs in one request.
 func (s *server) SendMany(stream SMSService_SendManyServer) error {
 
+	var err error
 	errors := []string{}
+
+	var wg sync.WaitGroup
+	errChan := make(chan error)
+
 	for {
 		// For each sms, ...
 		req, err := stream.Recv() // blocks!
@@ -96,19 +123,38 @@ func (s *server) SendMany(stream SMSService_SendManyServer) error {
 		}
 
 		if err != nil {
-			return status.Error(codes.Internal, "Internal error "+err.Error())
+			break // can't return here! must run all goroutines
 		}
 
 		// Send each using SendOne method. If error returned, append it to errors array
-		_, err = s.SendOne(stream.Context(), &SendOneRequest{Sms: req.GetSms()})
-
-		if err != nil {
-			errors = append(errors,
-				fmt.Sprintf("Couldn't send sms %v \n error %v", req.GetSms(), err))
-		}
+		// We can spin each request in a goroutine so that we don't block the current loop
+		// and aggregate the results at the end
+		wg.Add(1)
+		go func() {
+			_, err = s.SendOne(stream.Context(), &SendOneRequest{Sms: req.GetSms()})
+			errChan <- err
+			wg.Done()
+		}()
 
 		// sleep to avoid overwhelming SendOne method.
 		time.Sleep(100 * time.Millisecond)
+	}
+
+	// collect the errors if any
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	for ec := range errChan {
+		if ec != nil {
+			errors = append(errors, fmt.Sprintf("Couldn't send sms error %v", ec))
+		}
+	}
+
+	// must be after we execute all goroutines we spin up and close the channel
+	if err != nil {
+		return status.Error(codes.Internal, "Internal error "+err.Error())
 	}
 
 	return stream.SendAndClose(&SendManyResponse{Errors: errors})
