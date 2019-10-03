@@ -48,6 +48,10 @@ service SMSService {
   // SendMany method sends many SMSs in one request.
   // It relies on calling SendOne method for each sms.
   // 
+  // This is used when one SMS contains long text (exceeds limit of 1 sms), 
+  // And so the client will chunck it up, and split it into smaller SMSs
+  // And send them in one request. 
+  // 
   // For HTTP API, newline-delimited JSON is used for streaming.
   rpc SendMany (stream SendManyRequest) returns (SendManyResponse) {
     option (google.api.http) = {

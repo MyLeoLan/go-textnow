@@ -6,16 +6,18 @@ import (
 	"net"
 	"os"
 
+	"github.com/OmarElGabry/go-textnow/internal/pkg/redis"
+
 	// mysql driver
-	"github.com/OmarElGabry/go-callme/internal/phonebook"
-	"github.com/OmarElGabry/go-callme/internal/pkg/config"
-	"github.com/OmarElGabry/go-callme/internal/pkg/tracing"
-	"github.com/OmarElGabry/go-callme/internal/pkg/validator"
+	"github.com/OmarElGabry/go-textnow/internal/phonebook"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/config"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/tracing"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/validator"
 	_ "github.com/go-sql-driver/mysql"
 
 	"google.golang.org/grpc"
 
-	"github.com/OmarElGabry/go-callme/internal/pkg/mysql"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/mysql"
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/trace"
 )
@@ -37,6 +39,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to db: %v", err)
 	}
+
+	// connect to redis cache
+	cache, err := redis.NewCache()
 
 	// metrics and tracing
 	// 	jaeger only supports tracing
@@ -60,7 +65,7 @@ func main() {
 	opts = append(opts, validator.Middlewares()...)
 
 	s := grpc.NewServer(opts...)
-	srv := phonebook.NewPhoneBookServiceServer(db)
+	srv := phonebook.NewPhoneBookServiceServer(db, cache)
 	phonebook.RegisterPhoneBookServiceServer(s, srv)
 
 	// graceful shutdown

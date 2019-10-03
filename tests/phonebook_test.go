@@ -2,12 +2,13 @@ package tests
 
 import (
 	"net/http"
+	"strconv"
 	"testing"
 
 	"google.golang.org/grpc/codes"
 
-	pb "github.com/OmarElGabry/go-callme/internal/phonebook"
-	"github.com/OmarElGabry/go-callme/tests/stubs"
+	pb "github.com/OmarElGabry/go-textnow/internal/phonebook"
+	"github.com/OmarElGabry/go-textnow/tests/stubs"
 )
 
 func TestPhoneBook(t *testing.T) {
@@ -17,6 +18,7 @@ func TestPhoneBook(t *testing.T) {
 	// tests should be independent, and so either clear the database before every test
 	// or, use random data. We create stubs we return dummy random data.
 	TruncateMySQL()
+	FlushRedis()
 
 	// Run the tests as a sub-tests
 	t.Run("FindOneWithNonExistingPhoneNumber", func(t *testing.T) {
@@ -85,15 +87,17 @@ func TestPhoneBook(t *testing.T) {
 		// create 5 phone numbers to be reserved
 		areaCode := 613
 		numOfPhoneNumbers := 5
+		phoneNumbers := []string{}
+		areaCodeKey := "areacode-" + strconv.Itoa(int(areaCode))
 
 		for i := 0; i < numOfPhoneNumbers; i++ {
-			phoneNumber := stubs.GetPhoneNumberWithAreaCode(areaCode)
-			_, err := dbMySQL.Exec("INSERT INTO un_assigned_numbers (phone_number, area_code) VALUES (?, ?)",
-				phoneNumber, areaCode)
-			if err != nil {
-				t.Errorf("couldn't insert phone number: %v", err)
-				return
-			}
+			phoneNumbers = append(phoneNumbers, stubs.GetPhoneNumberWithAreaCode(areaCode))
+		}
+
+		_, err := cacheRedis.SAdd(areaCodeKey, phoneNumbers).Result()
+		if err != nil {
+			t.Errorf("couldn't insert phone number: %v", err)
+			return
 		}
 
 		// send a request request to reserve 5 phone numbers
@@ -117,7 +121,7 @@ func TestPhoneBook(t *testing.T) {
 		}
 
 		// validate the reserved numbers
-		phoneNumbers := resData.PhoneNumbers
+		phoneNumbers = resData.PhoneNumbers
 		if got, want := len(phoneNumbers), numOfPhoneNumbers; got != want {
 			t.Errorf("length of phone numbers = %d; want = %d", got, want)
 		}
@@ -223,6 +227,18 @@ func TestPhoneBook(t *testing.T) {
 
 		if got, want := resDataAssign.Assigned, true; got != want {
 			t.Errorf("Assigned = %t; want %t", got, want)
+			return
+		}
+
+		// did we save the unselected numbers back so that they are available for other users?
+		cuntPhoneNumbers, err := cacheRedis.SCard(areaCodeKey).Result()
+		if err != nil {
+			t.Errorf("couldn't insert phone number: %v", err)
+			return
+		}
+
+		if got, want := cuntPhoneNumbers, int64(numOfPhoneNumbers-1); got != want {
+			t.Errorf("Number of unselected phone numbers = %d; want %d", got, want)
 			return
 		}
 	})

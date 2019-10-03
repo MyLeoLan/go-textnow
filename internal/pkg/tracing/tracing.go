@@ -4,7 +4,7 @@ import (
 	"log"
 
 	datadog "github.com/DataDog/opencensus-go-exporter-datadog"
-	"github.com/OmarElGabry/go-callme/internal/pkg/config"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/config"
 
 	"contrib.go.opencensus.io/exporter/jaeger"
 )

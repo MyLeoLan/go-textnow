@@ -14,15 +14,17 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/OmarElGabry/go-callme/internal/pkg/config"
-	"github.com/OmarElGabry/go-callme/internal/pkg/mongodb"
-	"github.com/OmarElGabry/go-callme/internal/pkg/mysql"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/config"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/mongodb"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/mysql"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/redis"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 )
 
 var dbMySQL *mysql.DB
 var dbMongo *mongo.Collection
+var cacheRedis *redis.Cache
 
 // ErrorBody represents the JSON error we get back in the response
 type ErrorBody struct {
@@ -37,10 +39,13 @@ func TruncateMySQL() {
 	if err != nil {
 		log.Fatalf("Failed to truncate table: %v", err)
 	}
+}
 
-	_, err = dbMySQL.Exec("TRUNCATE TABLE un_assigned_numbers")
+// FlushRedis removes all keys in redis in the current database
+func FlushRedis() {
+	_, err := cacheRedis.FlushDB().Result()
 	if err != nil {
-		log.Fatalf("Failed to truncate table: %v", err)
+		log.Fatalf("Failed to flush redis: %v", err)
 	}
 }
 
@@ -108,6 +113,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Couldn't load env variables: %v", err)
 	}
 
+	// mysql
 	dbMySQL, err = mysql.NewDB(fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
 		config("MYSQL_USERNAME"),
 		config("MYSQL_PASSWORD"),
@@ -119,6 +125,13 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to connect to db: %v", err)
 	}
 
+	// redis
+	cacheRedis, err = redis.NewCache()
+	if err != nil {
+		log.Fatalf("Failed to connect to redis: %v", err)
+	}
+
+	// mongodb
 	client, err := mongodb.NewDB(config("MONGODB_URI"))
 	if err != nil {
 		log.Fatalf("Failed to connect to db: %v", err)

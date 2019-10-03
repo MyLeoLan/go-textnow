@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	"github.com/OmarElGabry/go-callme/internal/sms"
-	"github.com/OmarElGabry/go-callme/tests/stubs"
+	"github.com/OmarElGabry/go-textnow/internal/sms"
+	"github.com/OmarElGabry/go-textnow/tests/stubs"
 )
 
 func TestSMS(t *testing.T) {

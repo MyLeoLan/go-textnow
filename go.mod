@@ -1,4 +1,4 @@
-module github.com/OmarElGabry/go-callme
+module github.com/OmarElGabry/go-textnow
 
 go 1.12
 
@@ -6,14 +6,16 @@ require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	github.com/DataDog/datadog-go v2.2.0+incompatible // indirect
 	github.com/DataDog/opencensus-go-exporter-datadog v0.0.0-20190911072250-96a015d3fb1a
+	github.com/go-redis/redis v6.15.5+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 	github.com/grpc-ecosystem/grpc-gateway v1.11.1
-	github.com/joho/godotenv v1.3.0
 	github.com/mwitkow/go-proto-validators v0.1.0
+	github.com/onsi/ginkgo v1.10.2 // indirect
+	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/tidwall/pretty v1.0.0 // indirect

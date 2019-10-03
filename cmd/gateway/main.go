@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/OmarElGabry/go-callme/internal/pkg/config"
+	"github.com/OmarElGabry/go-textnow/internal/pkg/config"
 
 	"google.golang.org/grpc"
 
-	"github.com/OmarElGabry/go-callme/internal/phonebook"
-	"github.com/OmarElGabry/go-callme/internal/sms"
+	"github.com/OmarElGabry/go-textnow/internal/phonebook"
+	"github.com/OmarElGabry/go-textnow/internal/sms"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )

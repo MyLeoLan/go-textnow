@@ -5,9 +5,8 @@ import (
 	fmt "fmt"
 	"io"
 	"sync"
-	"time"
 
-	"github.com/OmarElGabry/go-callme/internal/phonebook"
+	"github.com/OmarElGabry/go-textnow/internal/phonebook"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,6 +19,7 @@ import (
 type server struct {
 	db *mongo.Collection
 	pB phonebook.PhoneBookServiceClient
+	// mu sync.Mutex
 }
 
 // NewSMSServiceServer creates and returns a new SMS service server
@@ -107,6 +107,10 @@ func (s *server) SendOne(ctx context.Context, req *SendOneRequest) (*SendOneResp
 }
 
 // SendMany method sends many SMSs in one request.
+//
+// This is used when one SMS contains long text (exceeds limit of 1 sms),
+// And so the client will chunck it up, and split it into smaller SMSs
+// And send them in one request.
 func (s *server) SendMany(stream SMSService_SendManyServer) error {
 
 	var err error
@@ -135,9 +139,6 @@ func (s *server) SendMany(stream SMSService_SendManyServer) error {
 			errChan <- err
 			wg.Done()
 		}()
-
-		// sleep to avoid overwhelming SendOne method.
-		time.Sleep(100 * time.Millisecond)
 	}
 
 	// collect the errors if any
@@ -173,10 +174,9 @@ func (s *server) isIdempotent(ctx context.Context, idempotencyFilter bson.M) (bo
 	// UpdateOne is used instead of InsertOne because it is easier
 	// to check if sms with the same idempotency key already exists or not.
 
-	// var mu sync.Mutex
-	// mu.Lock()
+	// s.mu.Lock()
 	res, err := s.db.UpdateOne(ctx, idempotencyFilter, data, &options.UpdateOptions{Upsert: &upsert})
-	// mu.Unlock()
+	// s.mu.Unlock()
 
 	if err != nil {
 		return false, err
