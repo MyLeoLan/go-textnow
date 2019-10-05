@@ -1,0 +1,20 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: phonebook-deployment
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: phonebook
+    spec:
+      containers:
+        - name: phonebook
+          image: phonebook-image:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 50051
+          envFrom:
+            - secretRef:
+                name: my-secrets

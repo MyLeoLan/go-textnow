@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["tracing.go"],
+    importpath = "github.com/OmarElGabry/go-textnow/internal/pkg/tracing",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/config:go_default_library",
+        "@com_github_datadog_opencensus_go_exporter_datadog//:go_default_library",
+        "@io_opencensus_go_contrib_exporter_jaeger//:go_default_library",
+    ],
+)

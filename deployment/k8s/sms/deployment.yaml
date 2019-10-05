@@ -1,0 +1,20 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: sms-deployment
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: sms
+    spec:
+      containers:
+        - name: sms
+          image: sms-image:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 50051
+          envFrom:
+            - secretRef:
+                name: my-secrets

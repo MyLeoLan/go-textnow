@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "main_test.go",
+        "phonebook_test.go",
+        "sms_test.go",
+    ],
+    deps = [
+        "//internal/phonebook:go_default_library",
+        "//internal/pkg/config:go_default_library",
+        "//internal/pkg/mongodb:go_default_library",
+        "//internal/pkg/mysql:go_default_library",
+        "//internal/pkg/redis:go_default_library",
+        "//internal/sms:go_default_library",
+        "//tests/stubs:go_default_library",
+        "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_mongodb_go_mongo_driver//bson:go_default_library",
+        "@org_mongodb_go_mongo_driver//mongo:go_default_library",
+    ],
+)

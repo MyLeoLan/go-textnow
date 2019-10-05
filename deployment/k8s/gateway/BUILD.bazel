@@ -1,0 +1,12 @@
+# The package rule declares this directory as a Bazel package
+# The visibility parameter declares which packages can call targets in this package
+# In this case, we're saying anyone can call these targets.
+package(default_visibility = ["//visibility:public"])
+
+# We want to export these yaml files as Bazel targets
+# so we can call them in "template" k8s atrribute from other BUILD files.
+exports_files([
+    "deployment.yaml",
+    "service.yaml",
+    "ingress.yaml",
+])

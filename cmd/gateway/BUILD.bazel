@@ -1,0 +1,56 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+load("@io_bazel_rules_k8s//k8s:objects.bzl", "k8s_objects")
+load("@k8s_deploy//:defaults.bzl", "k8s_deploy")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/OmarElGabry/go-textnow/cmd/gateway",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//internal/phonebook:go_default_library",
+        "//internal/pkg/config:go_default_library",
+        "//internal/sms:go_default_library",
+        "@com_github_grpc_ecosystem_grpc_gateway//runtime:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "gateway_binary",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
+
+go_image(
+    name = "gateway_image",
+    binary = "//cmd/gateway:gateway_binary",
+)
+
+k8s_deploy(
+    name = "gateway_deployment",
+    images = {
+        "gateway-image:latest": "//cmd/gateway:gateway_image",
+    },
+    template = "//deployment/k8s/gateway:deployment.yaml",
+)
+
+k8s_deploy(
+    name = "gateway_service",
+    template = "//deployment/k8s/gateway:service.yaml",
+)
+
+k8s_deploy(
+    name = "gateway_ingress",
+    template = "//deployment/k8s/gateway:ingress.yaml",
+)
+
+k8s_objects(
+    name = "gateway_k8s",
+    objects = [
+        "//cmd/gateway:gateway_deployment",
+        "//cmd/gateway:gateway_service",
+        "//cmd/gateway:gateway_ingress",
+    ],
+)

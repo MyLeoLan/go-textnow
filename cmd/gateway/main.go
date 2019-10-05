@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -32,19 +33,34 @@ func main() {
 
 	// phonebook
 	err = phonebook.RegisterPhoneBookServiceHandlerFromEndpoint(ctx, mux,
-		"phonebook:"+config("GRPC_SERVER_PORT"), opts)
+		"phonebook-service:"+config("GRPC_SERVER_PORT"), opts)
 	if err != nil {
 		log.Fatalf("gateway: failed to register phonebook service: %v", err)
 	}
 
 	// sms
 	err = sms.RegisterSMSServiceHandlerFromEndpoint(ctx, mux,
-		"sms:"+config("GRPC_SERVER_PORT"), opts)
+		"sms-service:"+config("GRPC_SERVER_PORT"), opts)
 	if err != nil {
 		log.Fatalf("gateway: failed to register sms service: %v", err)
 	}
 
-	s := &http.Server{Addr: ":8080", Handler: mux}
+	// add default route "/" required by k8s for health checks
+	// @see https://cloud.google.com/kubernetes-engine/docs/concepts/ingress#health_checks
+	gatewaymux := http.NewServeMux()
+	gatewaymux.HandleFunc("/health", func(w http.ResponseWriter, req *http.Request) {
+		hostname, err := os.Hostname()
+		if err != nil {
+			hostname = "Not found"
+		}
+
+		io.WriteString(w, "hello from the gateway: "+hostname)
+	})
+
+	// wrap the grpc mux
+	gatewaymux.Handle("/", mux)
+
+	s := &http.Server{Addr: ":8080", Handler: gatewaymux}
 
 	// graceful shutdown
 	c := make(chan os.Signal, 1)

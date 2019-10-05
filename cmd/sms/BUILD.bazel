@@ -1,0 +1,52 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+load("@io_bazel_rules_k8s//k8s:objects.bzl", "k8s_objects")
+load("@k8s_deploy//:defaults.bzl", "k8s_deploy")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/OmarElGabry/go-textnow/cmd/sms",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//internal/phonebook:go_default_library",
+        "//internal/pkg/config:go_default_library",
+        "//internal/pkg/mongodb:go_default_library",
+        "//internal/pkg/validator:go_default_library",
+        "//internal/sms:go_default_library",
+        "@io_opencensus_go//plugin/ocgrpc:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "sms_binary",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
+
+go_image(
+    name = "sms_image",
+    binary = "//cmd/sms:sms_binary",
+)
+
+k8s_deploy(
+    name = "sms_deployment",
+    images = {
+        "sms-image:latest": "//cmd/sms:sms_image",
+    },
+    template = "//deployment/k8s/sms:deployment.yaml",
+)
+
+k8s_deploy(
+    name = "sms_service",
+    template = "//deployment/k8s/sms:service.yaml",
+)
+
+k8s_objects(
+    name = "sms_k8s",
+    objects = [
+        "//cmd/sms:sms_deployment",
+        "//cmd/sms:sms_service",
+    ],
+)

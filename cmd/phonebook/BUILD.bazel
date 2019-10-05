@@ -1,0 +1,52 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+load("@io_bazel_rules_k8s//k8s:objects.bzl", "k8s_objects")
+load("@k8s_deploy//:defaults.bzl", "k8s_deploy")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/OmarElGabry/go-textnow/cmd/phonebook",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//internal/phonebook:go_default_library",
+        "//internal/pkg/config:go_default_library",
+        "//internal/pkg/mysql:go_default_library",
+        "//internal/pkg/redis:go_default_library",
+        "//internal/pkg/validator:go_default_library",
+        "@com_github_go_sql_driver_mysql//:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "phonebook_binary",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
+
+go_image(
+    name = "phonebook_image",
+    binary = "//cmd/phonebook:phonebook_binary",
+)
+
+k8s_deploy(
+    name = "phonebook_deployment",
+    images = {
+        "phonebook-image:latest": "//cmd/phonebook:phonebook_image",
+    },
+    template = "//deployment/k8s/phonebook:deployment.yaml",
+)
+
+k8s_deploy(
+    name = "phonebook_service",
+    template = "//deployment/k8s/phonebook:service.yaml",
+)
+
+k8s_objects(
+    name = "phonebook_k8s",
+    objects = [
+        "//cmd/phonebook:phonebook_deployment",
+        "//cmd/phonebook:phonebook_service",
+    ],
+)

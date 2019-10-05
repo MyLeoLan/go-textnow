@@ -9,14 +9,12 @@ import (
 	"github.com/OmarElGabry/go-textnow/internal/phonebook"
 	"github.com/OmarElGabry/go-textnow/internal/pkg/config"
 	"github.com/OmarElGabry/go-textnow/internal/pkg/mongodb"
-	"github.com/OmarElGabry/go-textnow/internal/pkg/tracing"
 	"github.com/OmarElGabry/go-textnow/internal/pkg/validator"
 
 	"github.com/OmarElGabry/go-textnow/internal/sms"
 	"google.golang.org/grpc"
 
 	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/trace"
 )
 
 func main() {
@@ -35,7 +33,7 @@ func main() {
 
 	// connect to phonebook server
 	// and register metrics and tracing handler
-	conn, err := grpc.Dial("phonebook:"+config("GRPC_SERVER_PORT"),
+	conn, err := grpc.Dial("phonebook-service:"+config("GRPC_SERVER_PORT"),
 		grpc.WithStatsHandler(&ocgrpc.ClientHandler{}), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Could not connect to phonebook server from sms: %v", err)
@@ -45,14 +43,14 @@ func main() {
 
 	// metrics and tracing
 	// 	jaeger only supports tracing
-	je, err := tracing.NewJaegerExporter("sms")
-	if err != nil {
-		log.Fatalf("Failed to create the Jaeger exporter: %v", err)
-	}
-	defer je.Flush()
+	// je, err := tracing.NewJaegerExporter("sms")
+	// if err != nil {
+	// 	log.Fatalf("Failed to create the Jaeger exporter: %v", err)
+	// }
+	// defer je.Flush()
 
-	trace.RegisterExporter(je)
-	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
+	// trace.RegisterExporter(je)
+	// trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 
 	// spin up the gRPC server
 	lis, err := net.Listen("tcp", ":"+config("GRPC_SERVER_PORT"))
@@ -62,7 +60,7 @@ func main() {
 
 	// create new server and register metrics and tracing handler
 	// make sure to put stats handler first
-	opts := []grpc.ServerOption{grpc.StatsHandler(&ocgrpc.ServerHandler{})}
+	opts := []grpc.ServerOption{ /*grpc.StatsHandler(&ocgrpc.ServerHandler{})*/ }
 	opts = append(opts, validator.Middlewares()...)
 
 	s := grpc.NewServer(opts...)
