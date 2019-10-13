@@ -111,6 +111,12 @@ func (s *server) SendOne(ctx context.Context, req *SendOneRequest) (*SendOneResp
 // This is used when one SMS contains long text (exceeds limit of 1 sms),
 // And so the client will chunck it up, and split it into smaller SMSs
 // And send them in one request.
+//
+// To avoid having the client to wait, we can use the idea of "Tracking ID"
+// So, the client will make a request, and all SMSs will be sent at the background,
+// and so terminating the reqeust as early as possible.
+// This tracking id can be later used to know about the status of the request, and if any errors.
+// And that requires another RPC method.
 func (s *server) SendMany(stream SMSService_SendManyServer) error {
 
 	var err error

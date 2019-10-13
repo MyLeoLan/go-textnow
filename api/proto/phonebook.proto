@@ -49,7 +49,7 @@ service PhoneBookService {
 		};
   };
 
-  // Reserve method reservers 5 (unassigned) phone numbers 
+  // Reserve method reserves 5 (unassigned) phone numbers 
   //  and allow the user to choose one of them.
   //
   // The refID (random hash) is used identify the reserved numbers 
@@ -61,7 +61,7 @@ service PhoneBookService {
 		};
   }; 
 
-  // Assign method assigns the choosen number to the user.
+  // Assign method assigns the selected number to the user.
   //
   // It is called immediately after Reserve method to carry on the phone number assignment.
   rpc Assign(AssignRequest) returns (AssignResponse) {

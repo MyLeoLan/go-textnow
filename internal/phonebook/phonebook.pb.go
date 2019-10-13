@@ -357,7 +357,7 @@ type PhoneBookServiceClient interface {
 	// The refID (random hash) is used identify the reserved numbers
 	//  when Assign method is called later.
 	Reserve(ctx context.Context, in *ReserveRequest, opts ...grpc.CallOption) (*ReserveResponse, error)
-	// Assign method assigns the choosen number to the user.
+	// Assign method assigns the selected number to the user.
 	//
 	// It is called immediately after Reserve method to carry on the phone number assignment.
 	Assign(ctx context.Context, in *AssignRequest, opts ...grpc.CallOption) (*AssignResponse, error)
@@ -408,7 +408,7 @@ type PhoneBookServiceServer interface {
 	// The refID (random hash) is used identify the reserved numbers
 	//  when Assign method is called later.
 	Reserve(context.Context, *ReserveRequest) (*ReserveResponse, error)
-	// Assign method assigns the choosen number to the user.
+	// Assign method assigns the selected number to the user.
 	//
 	// It is called immediately after Reserve method to carry on the phone number assignment.
 	Assign(context.Context, *AssignRequest) (*AssignResponse, error)

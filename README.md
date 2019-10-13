@@ -34,7 +34,7 @@ bazel run //cmd/sms:sms_k8s.apply --incompatible_depset_is_not_iterable=false --
 bazel run //cmd/gateway:gateway_k8s.apply --incompatible_depset_is_not_iterable=false --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
 ```
 
-_The flag `--incompatible_depset_is_not_iterable=false` is due to this [issue/bug]([https://github.com/bazelbuild/rules_k8s/issues/248](https://github.com/bazelbuild/rules_k8s/issues/248)), 
+_The flag `--incompatible_depset_is_not_iterable=false` is due to this [issue/bug](https://github.com/bazelbuild/rules_k8s/issues/248),
 while `--platforms=@io_bazel_rules_go//go/toolchain:linux_amd64` is to force building the binary for Linux since it will run in a Linux container_.
 
 **As far as compiling the proto files is concerned**, bazel can do it, but it is not implemented at the current moment. Alternatively, run the scripts to compile the proto files manually. Bazel, or more specifically, Gazelle, doesn't like having proto files with different package names in the same directory. Every folder represent a package. Only files related to that package should exist.
@@ -283,7 +283,7 @@ Before
 
 After
 ![SendOne After](https://raw.githubusercontent.com/OmarElGabry/go-textnow/master/assets/2nd-sendone-after.png)
-We can see time improvement since we send two requests to `FindOne` are sent at the same time.
+We can see time improvement since we the two requests to `FindOne` are sent at the same time.
 
 #### SendMany
 We can follow the same approach and wrap each call to `SendOne` in a goroutine instead of sending them one by one sequentially. Then, wait until all goroutines, all calls to `SendOne`, are done. And finally, check for any errors.
@@ -300,7 +300,7 @@ We can follow the same approach and wrap each call to `SendOne` in a goroutine i
 Moving forward, beside using goroutines, there are other subtle improvements one can make. For exmaple: 
 - **The chocies of data structures**. For example, with slice initialization, there is a performance penalty with every resizing operation for adding/remove to resizing array unlike the array with a pre-defined size. And so, initialize the array with a len or capacity whenever it is possible.
 - **Passing reference vs passing value**. For most of the cases, passing by value is faster due to storing it on stack vs heap. The stack memory doesn't need a garbage collector nor need to be synchronized unlike heap memory.
-- Adjusting the **garbage collector** behaviour to reduce the frequency of unneccessary work by GC which eats up the CPU cycles. [More on that.]([https://medium.com/twitch-news/go-memory-ballast-how-i-learnt-to-stop-worrying-and-love-the-heap-26c2462549a2](https://medium.com/twitch-news/go-memory-ballast-how-i-learnt-to-stop-worrying-and-love-the-heap-26c2462549a2))
+- Adjusting the **garbage collector** behaviour to reduce the frequency of unneccessary work by GC which eats up the CPU cycles. [More on that.](https://medium.com/twitch-news/go-memory-ballast-how-i-learnt-to-stop-worrying-and-love-the-heap-26c2462549a2)
 - etc.
 
 ### Queries

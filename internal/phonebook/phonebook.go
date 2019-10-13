@@ -91,7 +91,7 @@ func (s *server) Reserve(ctx context.Context, req *ReserveRequest) (*ReserveResp
 	return &ReserveResponse{PhoneNumbers: phoneNumbers, RefId: refID}, nil
 }
 
-// Assign method assigns the choosen number to the user
+// Assign method assigns the selected number to the user
 //
 // It is called immediately after Reserve method to carry on the phone number assignment.
 // NOTE: We assume that the "userID" already exists in the database.
