@@ -92,7 +92,7 @@ This is used when one SMS contains long text (exceeds limit of 1 sms), and so th
 #### Data
 For simplicity, currently exists 1M users, 10,000 (unassigned) phone numbers, and 5M sms.
 
-For phonebook service, only the user's phone number is update. Each phone number can be, say, ~15 bytes, in total = 15 * 86400 _(seconds per day)_   ~= 1.2MB per day.
+For phonebook service, only the user's phone number is updated. Each phone number can be, say, ~15 bytes, in total = 15 * 86400 _(seconds per day)_   ~= 1.2MB per day.
 
 For sms service, each sms contains _from_ & _to_ phone numbers, the sms content and the idempotency key. Each of the from and to is ~15 bytes, while the sms content is ~160 bytes and idempotency key is 16 bytes. In total we get (15 * 2) + 160 + 16 = 206 bytes per sms, and 206 * 500 * 86400 = 8.8 GB per day.
 
@@ -210,7 +210,7 @@ To make sure it is idempotent, we need first to check if idempotency key existen
 3. Otherwise, continue execution, and send sms.
 4. On failure, delete the idempotent key so that the same sms can be sent again in the future.
 
-To avoid concurrent requests from sending the same sms, only one insert operation (in step 1 above) is assumed to be executed by MongoDB at a time.
+To avoid concurrent requests from sending the same sms, it is assumed that only one insert operation (in step 1 above) will be executed by MongoDB at a time.
 
 REST API:
 ```
@@ -246,76 +246,14 @@ Response:
 
 _For HTTP API, newline-delimited JSON is used for streaming. SMSs are sent one by one in a stream. This is done thanks to the grpc-gateway_.
 
-## Attempt 2: Use goroutines 
-The one of the ways in optimizing the application, and usaully the first step, is the code and queries, keeping in mind things such as memory utilization, cpu, garbage collector, etc.
-
-Every improvment needs to be benchmarked and fully tested in an environment that resembles the production one.
-
-### Code
-There are operations that can run in parallel by taking advantage of goroutines, and so decrease the overall time.
-
-#### Assign
-The last two SQL statement inside the transaction doesn't need to run in parallel. And so we execute them in parallel by running each in a goroutine and gather the output at the end. 
-
-In parallel (non-blocking):
-1. Delete the selected number from `un_assigned_numbers` table
-2. Assign the selected number to the user in `phonebook` table 
-3. Wait until both (1) and (2) are done And check for any errors.
-
-Before
-![Assign Before](https://raw.githubusercontent.com/OmarElGabry/go-textnow/master/assets/2nd-assign-before.png)
-
-After
-![Assign After](https://raw.githubusercontent.com/OmarElGabry/go-textnow/master/assets/2nd-assign-after.png)
-
-_These screeshots from Jaeger are just for demonstaration purposes and doesn't reflect the actual time taken._
-
-By getting rid of the transaction and using goroutines, we'll see an improvement as both will be executed at the same time, so, this is a trade-off between Consistency and Performance. 
-
-#### SendOne
-The two calls to `FindOne` for checking the existence of each of from and to phone numbers can be done in parallel.
-
-1. Send two requests to `FindOne(from)` & `FindOne(to)` at the same time, each in a goroutine. 
-2. Wait both (1) and (2) are done, and check for any errors.
-
-Before
-![SendOne Before](https://raw.githubusercontent.com/OmarElGabry/go-textnow/master/assets/2nd-sendone-before.png)
-
-After
-![SendOne After](https://raw.githubusercontent.com/OmarElGabry/go-textnow/master/assets/2nd-sendone-after.png)
-We can see time improvement since we the two requests to `FindOne` are sent at the same time.
-
-#### SendMany
-We can follow the same approach and wrap each call to `SendOne` in a goroutine instead of sending them one by one sequentially. Then, wait until all goroutines, all calls to `SendOne`, are done. And finally, check for any errors.
-
-![SendMany With Goroutines](https://raw.githubusercontent.com/OmarElGabry/go-textnow/master/assets/2nd-sendmany-goroutines.png)
-**Few notes:**
-1. Running many goroutines doesn't mean better performance. In fact, the fewer and neccessary goroutines, the better.  
-	- Having too many goroutines will force some to wait until others finish. _Only one goroutine can run at a CPU core at any time_.
-	- With every "blocking" operation (i.e. calling database, client -> server, etc), the current goroutine is swaped out for another one, and since we have many goroutines that are fighting, many of them will end up waiting and waiting.
-	- Overall, code that spends more time swaping in and out between goroutines than doing computation will experience performance degradation.
-	- The result performance will be as if we executed statements sequentially!
-2. Similarly, running many queries against the database at the same time might hang up some requests. And end up slowing down the response time. And so, avoid the database calls as mush as you can and use cache.  
-
-Moving forward, beside using goroutines, there are other subtle improvements one can make. For exmaple: 
-- **The chocies of data structures**. For example, with slice initialization, there is a performance penalty with every resizing operation for adding/remove to resizing array unlike the array with a pre-defined size. And so, initialize the array with a len or capacity whenever it is possible.
-- **Passing reference vs passing value**. For most of the cases, passing by value is faster due to storing it on stack vs heap. The stack memory doesn't need a garbage collector nor need to be synchronized unlike heap memory.
-- Adjusting the **garbage collector** behaviour to reduce the frequency of unneccessary work by GC which eats up the CPU cycles. [More on that.](https://medium.com/twitch-news/go-memory-ballast-how-i-learnt-to-stop-worrying-and-love-the-heap-26c2462549a2)
-- etc.
-
-### Queries
-We've done a bit of improvement when we placed indexes around the columns that we frequently access. 
-
-## Attempt 3: Use cache
+## Adding cache
 ![Use cache](https://raw.githubusercontent.com/OmarElGabry/go-textnow/master/assets/use-cache.png)
 
-After we improved code and queries. One of the common solutions for scaling is using cache. 
-
-The main problem with the previous code is the DB calls. The database is the slowest piece in the application. And so we should avoid database calls and use cache instead.  
+The database is the slowest piece in the application. And so we avoid database calls and use cache instead.  
 
 Facts about the nature of the application that can simplify the work. For example, un assigned phone numbers are not that many and can all reside in a cache. If the data is huge, then we can store only frequently used numbers in cache as a way to optimize popular queries.
 
-An ideal solution is to use Redis; an in-memory cache that supports different data structures, presistence and replication.
+A solution is to use Redis; an in-memory cache that supports different data structures, presistence and replication.
 
 It is a good idea to have two Redis instances for two different eviction policies. For `un_assigned_numbers`,  we can no eviction policy, while LRU policy for users' phone numbers (`phone_number` column in `phonebook` tables).
 
@@ -349,5 +287,3 @@ _To avoid processing the same request (i.e. user hit the button twice), idemptoe
 5. Update the cache with the newly assigned number.
 
 The UPDATE statement in step 4 takes time because it hits the database. This can be improved by storing the newly assigned phone number (`phone_number` in `phonebook` table) in the cache and update the database at the background. For this to work, we need to use async queue to carry on storing data in the database, re-try on failure, etc.
-
-No wonder, similar to the database, a cache instance also suffers from many concurrent requests.
