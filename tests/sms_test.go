@@ -14,7 +14,7 @@ import (
 )
 
 func TestSMS(t *testing.T) {
-	uri := "http://gateway:8080/sms/"
+	uri := "http://gateway-service:8080/sms/"
 
 	// clear database
 	// sms doesn't access MySQL database but relies on having existing phonenumber records

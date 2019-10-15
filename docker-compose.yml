@@ -1,6 +1,6 @@
 version: '3'
 services:
-  phonebook:
+  phonebook-service:
     build: 
       dockerfile: ./build/phonebook/Dockerfile.dev
       context: ./
@@ -16,7 +16,7 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - GRPC_SERVER_PORT=${GRPC_SERVER_PORT}
       - TRACING_SERVER_HOST=${TRACING_SERVER_HOST}
-  sms:
+  sms-service:
       build:
         dockerfile: ./build/sms/Dockerfile.dev
         context: ./
@@ -28,8 +28,8 @@ services:
         - GRPC_SERVER_PORT=${GRPC_SERVER_PORT}
         - TRACING_SERVER_HOST=${TRACING_SERVER_HOST}
       depends_on:
-        - phonebook
-  gateway:
+        - phonebook-service
+  gateway-service:
       build: 
         dockerfile: ./build/gateway/Dockerfile.dev
         context: ./
@@ -38,8 +38,8 @@ services:
       environment:
         - GRPC_SERVER_PORT=${GRPC_SERVER_PORT}
       depends_on:
-        - phonebook
-        - sms
+        - phonebook-service
+        - sms-service
       ports:  
         - '8080:8080'
   tests:
@@ -60,7 +60,7 @@ services:
       - MONGODB_DBNAME=${MONGODB_DBNAME}
       - GRPC_SERVER_PORT=${GRPC_SERVER_PORT}
     depends_on:
-      - phonebook
-      - sms
-      - gateway
+      - phonebook-service
+      - sms-service
+      - gateway-service
 

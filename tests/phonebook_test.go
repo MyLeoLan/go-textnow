@@ -12,7 +12,7 @@ import (
 )
 
 func TestPhoneBook(t *testing.T) {
-	const uri = "http://gateway:8080/phonebook/"
+	const uri = "http://gateway-service:8080/phonebook/"
 
 	// clear database once before running tests
 	// tests should be independent, and so either clear the database before every test
